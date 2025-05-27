@@ -13,40 +13,63 @@ export function App() {
   const { data: paginatedTransactions, ...paginatedTransactionsUtils } = usePaginatedTransactions()
   const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } = useTransactionsByEmployee()
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
 
   const transactions = useMemo(() => {
-    if (transactionsByEmployee !== null) {
+    if (selectedEmployee && transactionsByEmployee !== null) {
       return transactionsByEmployee
     }
     return paginatedTransactions?.data ?? null
-  }, [paginatedTransactions, transactionsByEmployee])
+  }, [paginatedTransactions, transactionsByEmployee, selectedEmployee])
 
   const loadAllTransactions = useCallback(async () => {
     setIsLoading(true)
     transactionsByEmployeeUtils.invalidateData()
+    setSelectedEmployee(null)
+
     await employeeUtils.fetchAll()
     await paginatedTransactionsUtils.fetchAll()
+
     setIsLoading(false)
   }, [employeeUtils, paginatedTransactionsUtils, transactionsByEmployeeUtils])
 
   const loadTransactionsByEmployee = useCallback(
-    async (employeeId: string) => {
-      paginatedTransactionsUtils.invalidateData()
-      await transactionsByEmployeeUtils.fetchById(employeeId)
+    async (employee: Employee) => {
+      setSelectedEmployee(employee)
+      // removed: paginatedTransactionsUtils.invalidateData()
+      await transactionsByEmployeeUtils.fetchById(employee.id)
     },
-    [paginatedTransactionsUtils, transactionsByEmployeeUtils]
+    [transactionsByEmployeeUtils]
   )
 
   useEffect(() => {
     if (employees === null && !employeeUtils.loading) {
       loadAllTransactions()
     }
-  }, [employeeUtils.loading, employees, loadAllTransactions])
+
+    // reload paginated data if it's null and we're not filtering
+    if (
+      employees !== null &&
+      selectedEmployee === null &&
+      paginatedTransactions === null &&
+      !paginatedTransactionsUtils.loading
+    ) {
+      paginatedTransactionsUtils.fetchAll()
+    }
+  }, [
+    employeeUtils.loading,
+    employees,
+    selectedEmployee,
+    paginatedTransactions,
+    paginatedTransactionsUtils,
+    loadAllTransactions,
+  ])
 
   return (
     <Fragment>
       <main className="MainContainer">
         <Instructions />
+
         <hr className="RampBreak--l" />
 
         <InputSelect<Employee>
@@ -60,33 +83,31 @@ export function App() {
             label: `${item.firstName} ${item.lastName}`,
           })}
           onChange={async (newValue) => {
-            if (newValue === null) return
-            if (newValue.id === EMPTY_EMPLOYEE.id) {
+            if (newValue === null || newValue.id === EMPTY_EMPLOYEE.id) {
               await loadAllTransactions()
-            } else {
-              await loadTransactionsByEmployee(newValue.id)
+              return
             }
+
+            await loadTransactionsByEmployee(newValue)
           }}
         />
 
         <div className="RampBreak--l" />
+
         <div className="RampGrid">
           <Transactions transactions={transactions} />
 
-          {/* updated: only show View More if paginated data exists and there's a next page */}
-          {transactions !== null &&
-            transactionsByEmployee === null &&
-            paginatedTransactions?.nextPage !== null && (
-              <button
-                className="RampButton"
-                disabled={paginatedTransactionsUtils.loading}
-                onClick={async () => {
-                  await paginatedTransactionsUtils.fetchAll()
-                }}
-              >
-                View More
-              </button>
-            )}
+          {transactions !== null && !selectedEmployee && (
+            <button
+              className="RampButton"
+              disabled={paginatedTransactionsUtils.loading}
+              onClick={async () => {
+                await paginatedTransactionsUtils.fetchAll()
+              }}
+            >
+              View More
+            </button>
+          )}
         </div>
       </main>
     </Fragment>

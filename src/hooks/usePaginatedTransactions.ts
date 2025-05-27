@@ -10,6 +10,9 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
   > | null>(null)
 
   const fetchAll = useCallback(async () => {
+    // Prevent calling fetch if nextPage is null
+    if (paginatedTransactions?.nextPage === null) return
+
     const response = await fetchWithCache<PaginatedResponse<Transaction[]>, PaginatedRequestParams>(
       "paginatedTransactions",
       {
@@ -17,12 +20,14 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
       }
     )
 
-    setPaginatedTransactions((previousResponse) => {
-      if (response === null || previousResponse === null) {
-        return response
-      }
+    setPaginatedTransactions((previous) => {
+      if (response === null) return previous
+      if (previous === null) return response
 
-      return { data: response.data, nextPage: response.nextPage }
+      return {
+        data: [...previous.data, ...response.data],
+        nextPage: response.nextPage,
+      }
     })
   }, [fetchWithCache, paginatedTransactions])
 
@@ -30,5 +35,21 @@ export function usePaginatedTransactions(): PaginatedTransactionsResult {
     setPaginatedTransactions(null)
   }, [])
 
-  return { data: paginatedTransactions, loading, fetchAll, invalidateData }
+  const updateTransactionApproval = useCallback((transactionId: string, newValue: boolean) => {
+    setPaginatedTransactions((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        data: prev.data.map((tx) => (tx.id === transactionId ? { ...tx, approved: newValue } : tx)),
+      }
+    })
+  }, [])
+
+  return {
+    data: paginatedTransactions,
+    loading,
+    fetchAll,
+    invalidateData,
+    updateTransactionApproval,
+  }
 }

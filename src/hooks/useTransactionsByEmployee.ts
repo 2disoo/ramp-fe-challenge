@@ -11,11 +11,8 @@ export function useTransactionsByEmployee(): TransactionsByEmployeeResult {
     async (employeeId: string) => {
       const data = await fetchWithCache<Transaction[], RequestByEmployeeParams>(
         "transactionsByEmployee",
-        {
-          employeeId,
-        }
+        { employeeId }
       )
-
       setTransactionsByEmployee(data)
     },
     [fetchWithCache]
@@ -25,5 +22,18 @@ export function useTransactionsByEmployee(): TransactionsByEmployeeResult {
     setTransactionsByEmployee(null)
   }, [])
 
-  return { data: transactionsByEmployee, loading, fetchById, invalidateData }
+  const updateTransactionApproval = useCallback((transactionId: string, newValue: boolean) => {
+    setTransactionsByEmployee((prev) => {
+      if (!prev) return prev
+      return prev.map((tx) => (tx.id === transactionId ? { ...tx, approved: newValue } : tx))
+    })
+  }, [])
+
+  return {
+    data: transactionsByEmployee,
+    loading,
+    fetchById,
+    invalidateData,
+    updateTransactionApproval,
+  }
 }
