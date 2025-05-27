@@ -13,7 +13,7 @@ export const InputCheckbox: InputCheckboxComponent = ({ id, checked = false, dis
         className="RampInputCheckbox--input"
         checked={checked}
         disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)} // ✅ FIXED
+        onChange={(e) => onChange(e.target.checked)} // FIXED
       />
       <label
         htmlFor={inputId} // this connects the label to the input
