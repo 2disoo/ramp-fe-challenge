@@ -14,10 +14,13 @@ export function App() {
   const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } = useTransactionsByEmployee()
   const [isLoading, setIsLoading] = useState(false)
 
-  const transactions = useMemo(
-    () => paginatedTransactions?.data ?? transactionsByEmployee ?? null,
-    [paginatedTransactions, transactionsByEmployee]
-  )
+  const transactions = useMemo(() => {
+    // show filtered first if available
+    if (transactionsByEmployee !== null) {
+      return transactionsByEmployee
+    }
+    return paginatedTransactions?.data ?? null
+  }, [paginatedTransactions, transactionsByEmployee])
 
   const loadAllTransactions = useCallback(async () => {
     setIsLoading(true)
@@ -74,7 +77,8 @@ export function App() {
         <div className="RampGrid">
           <Transactions transactions={transactions} />
 
-          {transactions !== null && (
+          {/* updated: only show View More if NOT filtering by employee */}
+          {transactions !== null && transactionsByEmployee === null && (
             <button
               className="RampButton"
               disabled={paginatedTransactionsUtils.loading}
